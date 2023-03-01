@@ -39,7 +39,6 @@ y_data=np.array(y_data)
 sigma_data=np.array(sigma_data)
 
 batch_size_K = 40
-batch_size_outer = 100
 meta_lambda=0.03
 n_epochs = 80
 
@@ -113,10 +112,10 @@ model = model.to(device)
 learning_rate=0.003
 optimizer0 = torch.optim.Adam(model.params,lr=learning_rate,weight_decay=0.0001)
 
-data_loader_train = torch.utils.data.DataLoader(TensorDataset(torch.tensor(t_data).float().requires_grad_(),torch.tensor(y_data).float(),torch.tensor(sigma_data).float()),shuffle = True, batch_size = batch_size_outer)
+data_loader_train = torch.utils.data.DataLoader(TensorDataset(torch.tensor(t_data).float().requires_grad_(),torch.tensor(y_data).float(),torch.tensor(sigma_data).float()),shuffle = True, batch_size = batch_size_K)
 data_loader_test = torch.utils.data.DataLoader(TensorDataset(torch.tensor(t_data).float().requires_grad_(),torch.tensor(y_data).float(),torch.tensor(sigma_data).float()),shuffle = False, batch_size = 400)
 
-model.train()
+model.train() 
 optimizer=optimizer0
 
 for epoch in range(n_epochs):
@@ -124,8 +123,8 @@ for epoch in range(n_epochs):
     loss_test_sum = 0.0
 
     for step_train, data_train_now in enumerate(data_loader_train):
-        #if not step_train==0:
-        #    break
+        if not step_train==0:
+            break
 
         (features, labels, sigmas)=data_train_now
         features = features.to(device)
@@ -134,15 +133,15 @@ for epoch in range(n_epochs):
         outputs = model(features, model.params)
         loss_train = my_mse_loss(outputs, labels,sigmas)
         optimizer.zero_grad()
-        
+        # 反向传播求梯度
         loss_train.backward()
         optimizer.step()
 
         loss_train_sum += loss_train.item()
-        if (step_train+1) % 4 == 0:
-            print(f'step = {step_train+1}, loss = {loss_train_sum / 4:.6f}')
+        
+        if (step_train+1) % 1 == 0:
+            print(f'epoch = {epoch+1}, step = {step_train+1}, train loss = {loss_train_sum / 1:.6f}')
             loss_train_sum=0
-
 
     for step_test, data_test_now in enumerate(data_loader_test):
 
