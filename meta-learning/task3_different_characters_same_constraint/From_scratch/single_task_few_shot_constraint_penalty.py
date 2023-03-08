@@ -23,7 +23,7 @@ matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-filename="./ref_traj/"+'Y'+"_reftraj.mat"
+filename="../../ref_traj/"+'Y'+"_reftraj.mat"
 
 t_data=[]
 y_data=[]
@@ -44,8 +44,9 @@ n_epochs = 200
 
 redius=2.0
 less=False
-weight=1000.0
+weight=500.0
 center=[0.0,0.0]
+softplus_para=100.0
 
 class Model(torch.nn.Module):
     def __init__(self):
@@ -111,9 +112,9 @@ def constraint_voilations(outputs, center=center, less=less, redius=redius, weig
     center_tensor=torch.tensor(center, dtype= torch.float)
     constraint_voilations=0.0
     if less:
-        constraint_voilations= F.relu(torch.norm(position-center_tensor,dim=1)- redius)*weight
+        constraint_voilations= (F.softplus((torch.norm(position-center_tensor,dim=1)- redius),softplus_para)-0.0001)*weight
     else:
-        constraint_voilations= F.relu(-torch.norm(position-center_tensor,dim=1)+ redius)*weight
+        constraint_voilations= (F.softplus((-torch.norm(position-center_tensor,dim=1)+ redius),softplus_para)-0.0001)*weight
     return torch.mean(constraint_voilations)
 
 def adjust_learning_rate(optimizer, epoch, lr):

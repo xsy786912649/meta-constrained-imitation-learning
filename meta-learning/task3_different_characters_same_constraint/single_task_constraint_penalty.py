@@ -23,7 +23,7 @@ matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-filename="./ref_traj/"+'Z'+"_reftraj.mat"
+filename="../ref_traj/"+'A'+"_reftraj.mat"
 
 t_data=[]
 y_data=[]
@@ -44,8 +44,9 @@ n_epochs = 200
 
 redius=2.0
 less=False
-weight=1000.0
+weight=500.0
 center=[0.0,0.0]
+softplus_para=100.0
 
 class Model(torch.nn.Module):
     def __init__(self):
@@ -62,7 +63,7 @@ class Model(torch.nn.Module):
 
                     torch.Tensor(2, 128).uniform_(-1./math.sqrt(128), 1./math.sqrt(128)).requires_grad_(),
                     torch.Tensor(2).zero_().requires_grad_(),
-                ]
+                ] 
 
     def dense(self, x, params):
         y = F.linear(x, params[0], params[1])
@@ -111,9 +112,9 @@ def constraint_voilations(outputs, center=center, less=less, redius=redius, weig
     center_tensor=torch.tensor(center, dtype= torch.float)
     constraint_voilations=0.0
     if less:
-        constraint_voilations= F.relu(torch.norm(position-center_tensor,dim=1)- redius)*weight
+        constraint_voilations= (F.softplus((torch.norm(position-center_tensor,dim=1)- redius),softplus_para)-0.0001)*weight
     else:
-        constraint_voilations= F.relu(-torch.norm(position-center_tensor,dim=1)+ redius)*weight
+        constraint_voilations= (F.softplus((-torch.norm(position-center_tensor,dim=1)+ redius),softplus_para)-0.0001)*weight
     return torch.mean(constraint_voilations)
 
 

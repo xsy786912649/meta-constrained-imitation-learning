@@ -23,7 +23,7 @@ matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-filename="./ref_traj/"+'Z'+"_reftraj.mat"
+filename="../ref_traj/"+'A'+"_reftraj.mat"
 
 t_data=[]
 y_data=[]
@@ -44,8 +44,8 @@ n_epochs = 200
 
 redius=2.0
 less=False
-weight=1000.0
 center=[0.0,0.0]
+softplus_para=200.0
 
 class Model(torch.nn.Module):
     def __init__(self):
@@ -63,7 +63,7 @@ class Model(torch.nn.Module):
                     torch.Tensor(2, 128).uniform_(-1./math.sqrt(128), 1./math.sqrt(128)).requires_grad_(),
                     torch.Tensor(2).zero_().requires_grad_(),
                 ]
-
+        self.lambada= 0.0
     def dense(self, x, params):
         y = F.linear(x, params[0], params[1])
         y = F.relu(y)
@@ -106,19 +106,19 @@ def my_mse_loss(outputs, Q, Sigma):
     b=torch.reshape(a,(-1,1,4))
     return torch.mean(torch.matmul(torch.matmul(b,torch.inverse(Sigma)),a))
 
-def constraint_voilations(outputs, center=center, less=less, redius=redius, weight=weight):
+def constraint_voilations(outputs, center=center, less=less, redius=redius, weight=500.0):
     position,vel=outputs.split([2,2],dim=1)
     center_tensor=torch.tensor(center, dtype= torch.float)
     constraint_voilations=0.0
     if less:
-        constraint_voilations= F.relu(torch.norm(position-center_tensor,dim=1)- redius)*weight
+        constraint_voilations= (F.softplus((torch.norm(position-center_tensor,dim=1)- redius),softplus_para)-0.0001)*weight
     else:
-        constraint_voilations= F.relu(-torch.norm(position-center_tensor,dim=1)+ redius)*weight
+        constraint_voilations= (F.softplus((-torch.norm(position-center_tensor,dim=1)+ redius),softplus_para)-0.0001)*weight
+
     return torch.mean(constraint_voilations)
 
-
-def adjust_learning_rate(optimizer, epoch, lr):
-    for param_group in optimizer.param_groups:
+def adjust_learning_rate(optimizer, epoch, lr): 
+    for param_group in optimizer.param_groups: 
         param_group['lr'] = lr 
 
 
@@ -148,11 +148,24 @@ for epoch in range(n_epochs):
         labels = labels.to(device)
         sigmas=sigmas.to(device)
         outputs = model(features, model.params)
-        loss_train = my_mse_loss(outputs, labels,sigmas)+constraint_voilations(outputs)
+        loss_train = my_mse_loss(outputs, labels,sigmas)+constraint_voilations(outputs)*model.lambada
+
         optimizer.zero_grad()
-        
         loss_train.backward()
         optimizer.step()
+
+        outputs1 = model(features, model.params)
+        gradient_lambada=constraint_voilations(outputs1).item()
+        if gradient_lambada>0.5:
+            gradient_lambada=0.5
+        if gradient_lambada<0:
+            gradient_lambada=-0.5
+            
+        model.lambada+=0.04*gradient_lambada
+        if model.lambada<0: 
+            model.lambada=0.0 
+        
+        print(model.lambada)
 
         loss_train_sum += loss_train.item()
         if (step_train+1) % 1 == 0:
@@ -175,8 +188,6 @@ for epoch in range(n_epochs):
         if (step_test+1) % 1 == 0:
             print(f'epoch = {epoch+1}, step = {step_test+1}, test mse loss = {loss_test_sum / 1:.6f}, test constraint loss = {loss_test_constraint_sum / 1:.6f}')
             loss_test_sum=0
-
-
 
 outputs=[]
 inputss=[]
