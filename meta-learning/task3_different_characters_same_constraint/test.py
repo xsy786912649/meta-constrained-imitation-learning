@@ -1,3 +1,4 @@
+import scipy.io as scio
 import torchvision
 import torch
 from torch import nn 
@@ -22,5 +23,3 @@ matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-lambada= torch.ones(1).requires_grad_()
-print(lambada)

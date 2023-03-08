@@ -73,7 +73,7 @@ redius=2.0
 less=False
 weight=500.0
 center=[0.0,0.0]
-softplus_para=100.0
+softplus_para=200.0
     
 class Model(torch.nn.Module):
     def __init__(self):

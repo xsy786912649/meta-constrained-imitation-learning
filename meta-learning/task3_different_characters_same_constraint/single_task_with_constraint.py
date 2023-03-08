@@ -134,6 +134,9 @@ data_loader_test = torch.utils.data.DataLoader(TensorDataset(torch.tensor(t_data
 model.train()
 optimizer=optimizer0
 
+###################################### optimization_for_lambada
+lr_lamabada=0.03
+
 for epoch in range(n_epochs):
     loss_train_sum = 0.0
     loss_test_sum = 0.0
@@ -159,9 +162,9 @@ for epoch in range(n_epochs):
         if gradient_lambada>0.5:
             gradient_lambada=0.5
         if gradient_lambada<0:
-            gradient_lambada=-0.5
+            gradient_lambada=-1.0
             
-        model.lambada+=0.04*gradient_lambada
+        model.lambada+=lr_lamabada*gradient_lambada
         if model.lambada<0: 
             model.lambada=0.0 
         
@@ -172,9 +175,7 @@ for epoch in range(n_epochs):
             print(f'step = {step_train+1}, loss = {loss_train_sum / 1:.6f}')
             loss_train_sum=0
 
-
     for step_test, data_test_now in enumerate(data_loader_test):
-
         (features, labels, sigmas)=data_test_now
         features = features.to(device)
         labels = labels.to(device)
