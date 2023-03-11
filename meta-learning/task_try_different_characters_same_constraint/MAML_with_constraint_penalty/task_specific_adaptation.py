@@ -63,7 +63,7 @@ for filename in test_file_name_list:
     y_data_test_list.append(np.array(y_data))
     sigma_data_test_list.append(np.array(sigma_data))
 
-batch_size_K = 15
+batch_size_K = 20
 meta_lambda=0.00006
 n_epochs = 200
 
@@ -175,7 +175,7 @@ for i in range(len(t_data_test_list)):
         outputs1 = model(features_constraint, model.params)
         loss_train+=constraint_voilations(outputs1)
 
-        loss_train.backward(retain_graph=True)
+        #loss_train.backward(retain_graph=True)
         grads = torch.autograd.grad(loss_train, model.params, create_graph=False, retain_graph=False)
         theta_prime = [(model.params[i] - meta_lambda*grads[i]) for i in range(len(model.params))]
         model.params= theta_prime

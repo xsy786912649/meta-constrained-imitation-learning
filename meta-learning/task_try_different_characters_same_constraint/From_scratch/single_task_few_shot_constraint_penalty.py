@@ -23,7 +23,7 @@ matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-filename="../../ref_traj/"+'Y'+"_reftraj.mat"
+filename="../ref_traj/"+'A'+"_reftraj.mat"
 
 t_data=[]
 y_data=[]
@@ -38,7 +38,7 @@ t_data=np.array(t_data)
 y_data=np.array(y_data)
 sigma_data=np.array(sigma_data)
 
-batch_size_K = 15
+batch_size_K = 20
 meta_lambda=0.03
 n_epochs = 200
 
@@ -126,7 +126,7 @@ model = Model()
 model = model.to(device)
 
 learning_rate=0.003
-optimizer0 = torch.optim.Adam(model.params,lr=learning_rate,weight_decay=0.00001)
+optimizer0 = torch.optim.Adam(model.params,lr=learning_rate,weight_decay=0.1)
 
 data_loader_train = torch.utils.data.DataLoader(TensorDataset(torch.tensor(t_data).float().requires_grad_(),torch.tensor(y_data).float(),torch.tensor(sigma_data).float()),shuffle = True, batch_size = batch_size_K)
 data_loader_test = torch.utils.data.DataLoader(TensorDataset(torch.tensor(t_data).float().requires_grad_(),torch.tensor(y_data).float(),torch.tensor(sigma_data).float()),shuffle = False, batch_size = 400)

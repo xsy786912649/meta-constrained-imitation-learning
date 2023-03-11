@@ -1,0 +1,3 @@
+Task: different positions and rates of same character A, same constriants
+few_shot: Yes
+K=20

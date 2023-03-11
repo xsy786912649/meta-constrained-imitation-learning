@@ -38,12 +38,13 @@ t_data=np.array(t_data)
 y_data=np.array(y_data)
 sigma_data=np.array(sigma_data)
 
-batch_size_outer = 400
+batch_size_K = 20
 meta_lambda=0.03
 n_epochs = 200
 
 redius=2.0
 less=False
+weight=500.0
 center=[0.0,0.0]
 softplus_para=200.0
 
@@ -64,6 +65,7 @@ class Model(torch.nn.Module):
                     torch.Tensor(2).zero_().requires_grad_(),
                 ]
         self.lambada= 0.0
+
     def dense(self, x, params):
         y = F.linear(x, params[0], params[1])
         y = F.relu(y)
@@ -106,7 +108,7 @@ def my_mse_loss(outputs, Q, Sigma):
     b=torch.reshape(a,(-1,1,4))
     return torch.mean(torch.matmul(torch.matmul(b,torch.inverse(Sigma)),a))
 
-def constraint_voilations(outputs, center=center, less=less, redius=redius, weight=500.0):
+def constraint_voilations(outputs, center=center, less=less, redius=redius, weight=weight):
     position,vel=outputs.split([2,2],dim=1)
     center_tensor=torch.tensor(center, dtype= torch.float)
     constraint_voilations=0.0
@@ -117,8 +119,8 @@ def constraint_voilations(outputs, center=center, less=less, redius=redius, weig
 
     return torch.mean(constraint_voilations)
 
-def adjust_learning_rate(optimizer, epoch, lr): 
-    for param_group in optimizer.param_groups: 
+def adjust_learning_rate(optimizer, epoch, lr):
+    for param_group in optimizer.param_groups:
         param_group['lr'] = lr 
 
 
@@ -127,68 +129,69 @@ model = model.to(device)
 
 learning_rate=0.003
 optimizer0 = torch.optim.Adam(model.params,lr=learning_rate,weight_decay=0.1)
+lr_lamabada=0.03
 
-data_loader_train = torch.utils.data.DataLoader(TensorDataset(torch.tensor(t_data).float().requires_grad_(),torch.tensor(y_data).float(),torch.tensor(sigma_data).float()),shuffle = True, batch_size = batch_size_outer)
+data_loader_train = torch.utils.data.DataLoader(TensorDataset(torch.tensor(t_data).float().requires_grad_(),torch.tensor(y_data).float(),torch.tensor(sigma_data).float()),shuffle = True, batch_size = batch_size_K)
 data_loader_test = torch.utils.data.DataLoader(TensorDataset(torch.tensor(t_data).float().requires_grad_(),torch.tensor(y_data).float(),torch.tensor(sigma_data).float()),shuffle = False, batch_size = 400)
 
-model.train()
+model.train() 
 optimizer=optimizer0
-
-###################################### optimization_for_lambada
-lr_lamabada=0.03
+(step_train, data_train_now) = list(enumerate(data_loader_train))[0]
+(step_test, data_test_now) = list(enumerate(data_loader_test))[0]
 
 for epoch in range(n_epochs):
     loss_train_sum = 0.0
     loss_test_sum = 0.0
     loss_test_constraint_sum=0.0
 
-    for step_train, data_train_now in enumerate(data_loader_train):
-        #if not step_train==0:
-        #    break
+    (features, labels, sigmas)=data_train_now
+    features = features.to(device)
+    labels = labels.to(device)
+    sigmas=sigmas.to(device)
+    outputs = model(features, model.params)
+    loss_train = my_mse_loss(outputs, labels,sigmas)
+    
+    (features_constraint, labels_constraint, sigmas_constraint)=data_test_now
+    features_constraint = features_constraint.to(device)
+    outputs1 = model(features_constraint, model.params)
+    loss_train+=constraint_voilations(outputs1)*model.lambada
+    
+    optimizer.zero_grad()
+    loss_train.backward(retain_graph=True)
+    optimizer.step()
 
-        (features, labels, sigmas)=data_train_now
-        features = features.to(device)
-        labels = labels.to(device)
-        sigmas=sigmas.to(device)
-        outputs = model(features, model.params)
-        loss_train = my_mse_loss(outputs, labels,sigmas)+constraint_voilations(outputs)*model.lambada
-
-        optimizer.zero_grad()
-        loss_train.backward()
-        optimizer.step()
-
-        outputs1 = model(features, model.params)
-        gradient_lambada=constraint_voilations(outputs1).item()
-        if gradient_lambada>0.5:
-            gradient_lambada=0.5
-        if gradient_lambada<0:
-            gradient_lambada=-1.0
-            
-        model.lambada+=lr_lamabada*gradient_lambada
-        if model.lambada<0: 
-            model.lambada=0.0 
+    outputs1 = model(features_constraint, model.params)
+    gradient_lambada=constraint_voilations(outputs1).item()
+    if gradient_lambada>0.5:
+        gradient_lambada=0.5
+    if gradient_lambada<0:
+        gradient_lambada=-1.0
         
-        print(model.lambada)
+    model.lambada+=lr_lamabada*gradient_lambada
+    if model.lambada<0: 
+        model.lambada=0.0 
+    
+    print(model.lambada)
 
-        loss_train_sum += loss_train.item()
-        if (step_train+1) % 1 == 0:
-            print(f'step = {step_train+1}, loss = {loss_train_sum / 1:.6f}')
-            loss_train_sum=0
+    loss_train_sum += loss_train.item()
+    
+    if (step_train+1) % 1 == 0:
+        print(f'epoch = {epoch+1}, step = {step_train+1}, train loss = {loss_train_sum / 1:.6f}')
+        loss_train_sum=0
 
-    for step_test, data_test_now in enumerate(data_loader_test):
-        (features, labels, sigmas)=data_test_now
-        features = features.to(device)
-        labels = labels.to(device)
-        sigmas=sigmas.to(device)
-        outputs = model(features, model.params)
-        loss_test = my_mse_loss(outputs, labels,sigmas)
-        constraint_test=constraint_voilations(outputs)
-        loss_test_sum += loss_test.item()
-        loss_test_constraint_sum +=constraint_test.item() 
+    (features, labels, sigmas)=data_test_now
+    features = features.to(device)
+    labels = labels.to(device)
+    sigmas=sigmas.to(device)
+    outputs = model(features, model.params)
+    loss_test = my_mse_loss(outputs, labels,sigmas)
+    constraint_test=constraint_voilations(outputs)
+    loss_test_sum += loss_test.item()
+    loss_test_constraint_sum +=constraint_test.item() 
 
-        if (step_test+1) % 1 == 0:
-            print(f'epoch = {epoch+1}, step = {step_test+1}, test mse loss = {loss_test_sum / 1:.6f}, test constraint loss = {loss_test_constraint_sum / 1:.6f}')
-            loss_test_sum=0
+    if (step_test+1) % 1 == 0:
+        print(f'epoch = {epoch+1}, step = {step_test+1}, test mse loss = {loss_test_sum / 1:.6f}, test constraint loss = {loss_test_constraint_sum / 1:.6f}')
+        loss_test_sum=0
 
 outputs=[]
 inputss=[]
@@ -225,8 +228,4 @@ ax.plot(x111, y111, color="darkred", linewidth=2)
 plt.xlabel('x',size=28)
 plt.ylabel("y",size=28)
 plt.show()
-
-
-
-
 
