@@ -84,7 +84,7 @@ class GradientDescent(DifferentiableOptimizer):
     def step(self, params, hparams, create_graph):
         loss = self.get_loss(params, hparams)
         sz = self.step_size_f(hparams)
-        return gd_step(params, loss, sz, create_graph=create_graph)
+        return gd_step(params, loss, sz, create_graph=create_graph) 
 
 
 def gd_step(params, loss, step_size, create_graph=True):

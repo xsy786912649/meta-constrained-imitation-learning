@@ -11,6 +11,7 @@ import random
 import math
 from torch.nn import functional as F
 import csv
+import copy
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -21,11 +22,12 @@ from mpl_toolkits.axes_grid1.inset_locator import mark_inset
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
+import hypergrad as hg
+
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 filename_list=["../../ref_traj/"+'A'+"_reftraj.mat" ]*100
 test_file_name_list=["../../ref_traj/"+'A'+"_reftraj.mat" ]*3
-
 
 t_data_list=[]
 y_data_list=[]
@@ -70,8 +72,8 @@ for filename in test_file_name_list:
 
 batch_size_K = 400
 batch_size_outer = 400
-meta_lambda=0.00006
-n_epochs = 400
+meta_lambda=1.0
+n_epochs = 100
 n_inner_level_epochs=100
 
 redius=2.0
@@ -125,8 +127,8 @@ class Model(torch.nn.Module):
         v = torch.ones(x.shape,dtype=torch.float) 
         position=self.dense(self.input_process(x), params)*10.0 
         position1,position2=position.split([1,1],dim=1) 
-        vel1=torch.autograd.grad(position1,x,v,retain_graph=True, create_graph=True)[0] 
-        vel2=torch.autograd.grad(position2,x,v,retain_graph=True, create_graph=True)[0] 
+        vel1=torch.autograd.grad(position1,x,v,retain_graph=True, create_graph=True)[0]
+        vel2=torch.autograd.grad(position2,x,v,retain_graph=True, create_graph=True)[0]
         return torch.cat((position1,position2,vel1,vel2), 1) 
     
     def forward1(self, x, params):
@@ -152,22 +154,42 @@ def constraint_voilations(outputs, center=[0.0,0.0], less=less, redius=redius, w
         constraint_voilations= (F.softplus((-torch.norm(position-center_tensor,dim=1)+ redius),softplus_para)-0.001)*weight
     return torch.mean(constraint_voilations)
 
+def bias_reg(params,meta_parameter, lambada=meta_lambda):
+    theta_prime = [(params[i] - meta_parameter[i]) for i in range(len(params))]
+    bias_reg_loss=0.0
+    for i in range(len(params)):
+        bias_reg_loss+=torch.norm(theta_prime[i])*torch.norm(theta_prime[i])
+    return bias_reg_loss
+
 def adjust_learning_rate(optimizer, epoch, lr):
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr 
 
+
+def inner_loop(hparams, params, optim, n_steps=50, create_graph=False):
+    params_history = [optim.get_opt_params(params)]
+
+    for t in range(n_steps):
+        params_history.append(optim(params_history[-1], hparams, create_graph=create_graph))
+
+    return params_history
+
 model = Model()
 model = model.to(device)
 
-learning_rate=0.003
+learning_rate=0.001
 optimizer0 = torch.optim.Adam(model.params,lr=learning_rate,weight_decay=0.0000)
+
+#learning_rate=0.00006
+#optimizer0 = torch.optim.SGD(model.params,lr=learning_rate,weight_decay=0.0000)
 
 for epoch in range(n_epochs):
 
-    if epoch<n_epochs-50:
-        task_num=10
-    elif epoch>=n_epochs-50:
-        task_num=20 #len(x_train_list)
+    task_num=5
+    #if epoch<n_epochs-50:
+    #    task_num=5
+    #elif epoch>=n_epochs-50:
+    #    task_num=10 #len(x_train_list)
 
     number_list=random.sample(range(whole_task_num),task_num)
     t_data_list_thisepoch=[]
@@ -183,6 +205,7 @@ for epoch in range(n_epochs):
     t_data_list_thisepoch=t_data_list_thisepoch+t_data_test_list
     y_data_list_thisepoch=y_data_list_thisepoch+y_data_test_list
     sigma_data_list_thisepoch=sigma_data_list_thisepoch+sigma_data_test_list
+    center_list_train_thisepoch.extend(center_list_test)
 
     data_loader_train_list=[]
     data_loader_train_list_outer=[]
@@ -217,20 +240,26 @@ for epoch in range(n_epochs):
         loss_no_grad_test=[]
         loss_constraint_meta_test_tensor=[]
 
+        data_train_now_same=[[data_xy.clone().requires_grad_() for data_xy in  data_loader_train_new] for data_loader_train_new in data_train_now]
+
+        optimizer.zero_grad()
+
         for number, data_loader_train_now in enumerate(data_train_now):
             
             if number < task_num + task_test_num:
                 task_now=number
+                
                 (features, labels, sigmas)=data_loader_train_now
                 features = features.to(device)
                 labels = labels.to(device)
                 sigmas=sigmas.to(device)
                 outputs = model(features, model.params)
-                loss_train = my_mse_loss(outputs, labels, sigmas)
 
                 (features_constraint, labels_constraint)=data_train_constraint_now[task_now]
                 features_constraint = features_constraint.to(device)
                 outputs1 = model(features_constraint, model.params)
+
+                loss_train = my_mse_loss(outputs, labels, sigmas)
                 if number < task_num:
                     loss_train+=constraint_voilations( outputs1, center=center_list_train_thisepoch[task_now] )
                 else:
@@ -240,14 +269,38 @@ for epoch in range(n_epochs):
                     loss_no_grad.append(loss_train.item())
                 else:
                     loss_no_grad_test.append(loss_train.item())
-                # 梯度清零
-                optimizer.zero_grad()
-                grads = torch.autograd.grad(loss_train, model.params, create_graph=True, retain_graph=True)
-                [(grads[i].retain_grad()) for i in range(len(model.params))]
-                theta_prime = [(model.params[i] - meta_lambda*grads[i]) for i in range(len(model.params))]
-                [(theta_prime[i].retain_grad()) for i in range(len(model.params))]
-                theta_prime_list.append(theta_prime)
 
+                def loss_train_call(params, hparams):
+                    return my_mse_loss(model(features, params), labels, sigmas)+bias_reg(params,hparams)+ constraint_voilations( model(features_constraint, params), center=center_list_train_thisepoch[task_now] )
+                
+                #(features_test, label_test,sigma_test)=data_train_now_same[task_now + task_num + task_test_num]
+                (features_test, label_test,sigma_test)=data_loader_train_now
+
+                features_test = features_test.to(device)
+                label_test=label_test.to(device)
+                sigma_test=sigma_test.to(device)
+                
+                def loss_val_call(params, hparams):
+                    return my_mse_loss(model(features_test, params), label_test, sigma_test)
+                
+                inner_opt_class = hg.GradientDescent
+                inner_opt_kwargs = {'step_size': 0.00006}
+                inner_opt=inner_opt_class(loss_train_call, **inner_opt_kwargs)
+                inner_epoch=100
+
+                if number<task_num:
+                    theta_tem = [p.detach().clone().requires_grad_(True) for p in model.params] 
+                    theta_prime = inner_loop(model.params, theta_tem, inner_opt, inner_epoch)[-1]
+                    theta_prime_list.append(theta_prime)
+
+                    cg_fp_map = hg.GradientDescent(loss_f=loss_train_call, step_size=1.)  
+                    hg.CG(theta_prime, list(model.params), K=5, fp_map=cg_fp_map, outer_loss=loss_val_call) 
+                else:
+                    theta_tem = [p.detach().clone().requires_grad_(True) for p in model.params] 
+                    theta_prime = inner_loop(model.params, theta_tem, inner_opt, inner_epoch)[-1]
+                    theta_prime_list.append(theta_prime)
+
+                
             elif number>=task_num+task_test_num and number<2*task_num+task_test_num:
                 task_now=number-(task_num+task_test_num)
                 (features1, labels1,sigmas1)=data_loader_train_now
@@ -275,14 +328,12 @@ for epoch in range(n_epochs):
                 features_constraint = features_constraint.to(device)
                 outputs2 = model(features_constraint, theta_prime_list[task_now])
 
-                current_loss=my_mse_loss(outputs1, labels1,sigmas1)+constraint_voilations(outputs2, center=center_list_test[task_now-task_num] )
+                current_loss=my_mse_loss(outputs1, labels1,sigmas1)+constraint_voilations(outputs2, center=center_list_train_thisepoch[task_now] )
                 loss_meta_test_tensor.append(current_loss)
-                loss_constraint_meta_test_tensor.append(constraint_voilations(outputs2, center=center_list_test[task_now-task_num] ))
+                loss_constraint_meta_test_tensor.append(constraint_voilations(outputs2, center=center_list_train_thisepoch[task_now] ))
                 
         loss_meta_train=sum(loss_meta_train_tensor)/float(task_num)
-        
-        optimizer.zero_grad()
-        loss_meta_train.backward(retain_graph=  False)
+        #loss_meta_train.backward(retain_graph=  False)
         optimizer.step()
 
         loss_meta_test=sum(loss_meta_test_tensor)/float(task_test_num)
@@ -293,7 +344,6 @@ for epoch in range(n_epochs):
         loss_constraint_sum_test +=loss_constraint_meta_test.item()
         loss_no_grad_sum += sum(loss_no_grad)/(task_num)
         loss_no_grad_sum_test += sum(loss_no_grad_test)/(task_test_num)
-
 
 
         if (step_train+1) % 1 == 0:

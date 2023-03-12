@@ -67,8 +67,8 @@ for filename in test_file_name_list:
     sigma_data_test_list.append(np.array(sigma_data))
 
 batch_size_K = 400
-meta_lambda=0.00006
-n_epochs = 40
+meta_lambda=0.1
+n_epochs = 50
 
 redius=2.0
 less=False
@@ -86,9 +86,6 @@ class Model(torch.nn.Module):
                     torch.Tensor(128, 128).uniform_(-1./math.sqrt(128), 1./math.sqrt(128)).requires_grad_(),
                     torch.Tensor(128).zero_().requires_grad_(),
 
-                    torch.Tensor(128, 128).uniform_(-1./math.sqrt(128), 1./math.sqrt(128)).requires_grad_(),
-                    torch.Tensor(128).zero_().requires_grad_(),
-
                     torch.Tensor(2, 128).uniform_(-1./math.sqrt(128), 1./math.sqrt(128)).requires_grad_(),
                     torch.Tensor(2).zero_().requires_grad_(),
                 ]
@@ -101,9 +98,6 @@ class Model(torch.nn.Module):
         y = F.relu(y)
 
         y = F.linear(y, params[4], params[5])
-        y = F.relu(y)
-
-        y = F.linear(y, params[6], params[7])
 
         return y
 
@@ -148,6 +142,13 @@ def constraint_voilations(outputs, center=[0.0,0.0], less=less, redius=redius, w
         constraint_voilations= (F.softplus((-torch.norm(position-center_tensor,dim=1)+ redius),softplus_para)-0.001)*weight
     return torch.mean(constraint_voilations)
 
+def bias_reg(params,meta_parameter, lambada=meta_lambda):
+    theta_prime = [(params[i] - meta_parameter[i]) for i in range(len(params))]
+    bias_reg_loss=0.0
+    for i in range(len(params)):
+        bias_reg_loss+=torch.norm(theta_prime[i])*torch.norm(theta_prime[i])
+    return bias_reg_loss
+
 def adjust_learning_rate(optimizer, epoch, lr):
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr 
@@ -158,29 +159,67 @@ for num_task in range(len(t_data_test_list)):
 
     model = torch.load('model_meta.pkl') 
     model = model.to(device)
+    model_meta=torch.load('model_meta.pkl') 
+    meta_parameter=model_meta.params
+    for i in range(len(model_meta.params)):
+        meta_parameter[i].requires_grad = False 
 
+
+    learning_rate=0.00006
+    optimizer = torch.optim.SGD(model.params,lr=learning_rate,weight_decay=0.00001)
+    lambada= 1.0
+    lr_lamabada=0.04
+    """
+    learning_rate0=0.003
+    optimizer = torch.optim.Adam(model.params,lr=learning_rate0,weight_decay=0.00001)
+    lambada= 1.0
+    lr_lamabada=0.04
+    """
+    
     data_loader_train = torch.utils.data.DataLoader(TensorDataset(torch.tensor(t_data_test_list[num_task]).float().requires_grad_(),torch.tensor(y_data_test_list[num_task]).float(),torch.tensor(sigma_data_test_list[num_task]).float()),shuffle = True, batch_size = batch_size_K)
     data_loader_test = torch.utils.data.DataLoader(TensorDataset(torch.tensor(t_data_test_list[num_task]).float().requires_grad_(),torch.tensor(y_data_test_list[num_task]).float(),torch.tensor(sigma_data_test_list[num_task]).float()),shuffle = False, batch_size = 400)
     (step_train, data_train_now) = list(enumerate(data_loader_train))[0]
     (step_test, data_test_now) = list(enumerate(data_loader_test))[0]
 
     for epoch in range(n_epochs):
+        loss_train_sum = 0.0
+        loss_test_sum = 0.0
+        loss_test_constraint_sum=0.0
 
         (features, labels, sigmas)=data_train_now
         features = features.to(device)
         labels = labels.to(device)
         sigmas=sigmas.to(device)
         outputs = model(features, model.params)
-        loss_train = my_mse_loss(outputs, labels, sigmas)
-
+        loss_train = my_mse_loss(outputs, labels,sigmas)+bias_reg(model.params,meta_parameter)
+        
         (features_constraint, labels_constraint, sigmas_constraint)=data_test_now
         features_constraint = features_constraint.to(device)
         outputs1 = model(features_constraint, model.params)
-        loss_train+=constraint_voilations(outputs1,center=center_list_test[num_task])
+        loss_train+=constraint_voilations(outputs1,center=center_list_test[num_task])*lambada
+        
+        optimizer.zero_grad()
+        loss_train.backward(retain_graph=True)
+        optimizer.step()
 
-        grads = torch.autograd.grad(loss_train, model.params, create_graph=False, retain_graph=False)
-        theta_prime = [(model.params[i] - meta_lambda*grads[i]) for i in range(len(model.params))]
-        model.params= theta_prime
+        outputs1 = model(features_constraint, model.params)
+        gradient_lambada=constraint_voilations(outputs1,center=center_list_test[num_task]).item()
+        if gradient_lambada>0.5:
+            gradient_lambada=0.5
+        if gradient_lambada<0:
+            gradient_lambada=-0.5
+            
+        lambada+=lr_lamabada*gradient_lambada
+        if lambada<0: 
+            lambada=0.0 
+        
+        print(lambada)
+
+        loss_train_sum += loss_train.item()
+        
+        if (step_train+1) % 1 == 0:
+            print(f'epoch = {epoch+1}, step = {step_train+1}, train loss = {loss_train_sum / 1:.6f}')
+            loss_train_sum=0
 
         (features, labels, sigmas)=data_test_now
         features = features.to(device)
@@ -189,15 +228,18 @@ for num_task in range(len(t_data_test_list)):
         outputs = model(features, model.params)
         loss_test = my_mse_loss(outputs, labels,sigmas)
         constraint_test=constraint_voilations(outputs,center=center_list_test[num_task])
+        loss_test_sum += loss_test.item()
+        loss_test_constraint_sum +=constraint_test.item() 
 
-        print(f'epoch = {epoch+1}, step = {step_test+1}, train loss = {loss_train.item():.6f}, test mse loss = {loss_test.item():.6f}, test constraint loss = {constraint_test.item()  / 1:.6f}')
+        if (step_test+1) % 1 == 0:
+            print(f'epoch = {epoch+1}, step = {step_test+1}, test mse loss = {loss_test_sum / 1:.6f}, test constraint loss = {loss_test_constraint_sum / 1:.6f}')
+            loss_test_sum=0
 
     outputs=[]
     inputss=[]
     labelss=[]
-    print(center_list_test[num_task])
     with torch.no_grad():
-        for j, (inputs, labels, sigma) in enumerate(data_loader_test):
+        for i, (inputs, labels, sigma) in enumerate(data_loader_test):
             inputs = inputs.to(device)
             labels = labels.to(device)
             output = model.forward1(inputs, model.params)
@@ -214,7 +256,10 @@ for num_task in range(len(t_data_test_list)):
     z=outputs[:,1]
     y_label=labelss[:,0]
     z_label=labelss[:,1]
-
+    #plt.scatter(x, y, 1, alpha=0.8)
+    #plt.show()
+    #plt.scatter(x, z, 1, alpha=0.8)
+    #plt.show()
     theta = np.linspace(0, 2 * np.pi, 200)
     x111 = np.cos(theta)*redius+center_list_test[num_task][0]
     y111 = np.sin(theta)*redius+center_list_test[num_task][1]
