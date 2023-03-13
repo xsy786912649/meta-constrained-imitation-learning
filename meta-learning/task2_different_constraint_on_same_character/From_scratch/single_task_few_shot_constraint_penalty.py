@@ -41,7 +41,7 @@ sigma_data=np.array(sigma_data)
 
 batch_size_K = 400
 meta_lambda=0.03
-n_epochs = 200
+n_epochs = 100
 
 redius=2.0
 less=False
@@ -122,7 +122,6 @@ def adjust_learning_rate(optimizer, epoch, lr):
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr 
 
-
 for center in center_list_test:
 
     model = Model()
@@ -132,7 +131,7 @@ for center in center_list_test:
     learning_rate=0.00006
     optimizer0 = torch.optim.SGD(model.params,lr=learning_rate,weight_decay=0.1)
     """
-    learning_rate0=0.003
+    learning_rate0=0.001
     optimizer0 = torch.optim.Adam(model.params,lr=learning_rate0,weight_decay=0.1)
 
 

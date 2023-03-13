@@ -41,7 +41,7 @@ sigma_data=np.array(sigma_data)
 
 batch_size_K = 400
 meta_lambda=0.03
-n_epochs = 200
+n_epochs = 100
 
 redius=2.0
 less=False

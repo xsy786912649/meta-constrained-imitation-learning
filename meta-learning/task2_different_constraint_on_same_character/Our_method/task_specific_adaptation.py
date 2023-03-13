@@ -67,8 +67,8 @@ for filename in test_file_name_list:
     sigma_data_test_list.append(np.array(sigma_data))
 
 batch_size_K = 400
-meta_lambda=1.0
-n_epochs = 50
+meta_lambda=50.0
+n_epochs = 40
 
 redius=2.0
 less=False
@@ -153,12 +153,11 @@ def bias_reg(params,meta_parameter, lambada=meta_lambda):
     bias_reg_loss=0.0
     for i in range(len(params)):
         bias_reg_loss+=torch.norm(theta_prime[i])*torch.norm(theta_prime[i])
-    return bias_reg_loss
+    return bias_reg_loss*lambada
 
 def adjust_learning_rate(optimizer, epoch, lr):
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr 
-
 
 
 for num_task in range(len(t_data_test_list)):
@@ -170,17 +169,17 @@ for num_task in range(len(t_data_test_list)):
     for i in range(len(model_meta.params)):
         meta_parameter[i].requires_grad = False 
 
-
+    """
     learning_rate=0.00006
     optimizer = torch.optim.SGD(model.params,lr=learning_rate,weight_decay=0.00001)
     lambada= 1.0
     lr_lamabada=0.04
     """
-    learning_rate0=0.003
+    learning_rate0=0.001
     optimizer = torch.optim.Adam(model.params,lr=learning_rate0,weight_decay=0.00001)
     lambada= 1.0
     lr_lamabada=0.04
-    """
+
     
     data_loader_train = torch.utils.data.DataLoader(TensorDataset(torch.tensor(t_data_test_list[num_task]).float().requires_grad_(),torch.tensor(y_data_test_list[num_task]).float(),torch.tensor(sigma_data_test_list[num_task]).float()),shuffle = True, batch_size = batch_size_K)
     data_loader_test = torch.utils.data.DataLoader(TensorDataset(torch.tensor(t_data_test_list[num_task]).float().requires_grad_(),torch.tensor(y_data_test_list[num_task]).float(),torch.tensor(sigma_data_test_list[num_task]).float()),shuffle = False, batch_size = 400)
@@ -224,7 +223,7 @@ for num_task in range(len(t_data_test_list)):
         loss_train_sum += loss_train.item()
         
         if (step_train+1) % 1 == 0:
-            print(f'epoch = {epoch+1}, step = {step_train+1}, train loss = {loss_train_sum / 1:.6f}')
+            print(f'epoch = {epoch+1}, step = {step_train+1}, train loss = {loss_train_sum / 1:.6f}, reg loss = {bias_reg(model.params,meta_parameter).item():.6f}')
             loss_train_sum=0
 
         (features, labels, sigmas)=data_test_now

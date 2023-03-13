@@ -72,8 +72,8 @@ for filename in test_file_name_list:
 
 batch_size_K = 400
 batch_size_outer = 400
-meta_lambda=1.0
-n_epochs = 80
+meta_lambda=200.0
+n_epochs = 100
 n_inner_level_epochs=100
 
 redius=2.0
@@ -159,12 +159,11 @@ def bias_reg(params,meta_parameter, lambada=meta_lambda):
     bias_reg_loss=0.0
     for i in range(len(params)):
         bias_reg_loss+=torch.norm(theta_prime[i])*torch.norm(theta_prime[i])
-    return bias_reg_loss
+    return bias_reg_loss*lambada
 
 def adjust_learning_rate(optimizer, epoch, lr):
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr 
-
 
 def inner_loop(hparams, params, optim, n_steps=50, create_graph=False):
     params_history = [optim.get_opt_params(params)]
@@ -174,7 +173,19 @@ def inner_loop(hparams, params, optim, n_steps=50, create_graph=False):
 
     return params_history
 
-model = Model()
+
+def inner_loop_my(hparams, params, loss, n_steps=50, create_graph=False):
+
+    learning_rate0=0.001
+    optimizer0 = torch.optim.Adam(params,lr=learning_rate0,weight_decay=0.0)
+    for i in range(n_steps):
+        loss_train1=loss(params,hparams)
+        optimizer0.zero_grad()
+        loss_train1.backward(retain_graph=True)
+        optimizer0.step()
+    return params
+
+model = Model() 
 model = model.to(device)
 
 learning_rate=0.001
@@ -185,11 +196,11 @@ optimizer0 = torch.optim.Adam(model.params,lr=learning_rate,weight_decay=0.0000)
 
 for epoch in range(n_epochs):
 
-    task_num=5
-    #if epoch<n_epochs-50:
-    #    task_num=5
-    #elif epoch>=n_epochs-50:
-    #    task_num=10 #len(x_train_list)
+    task_num=10
+    if epoch<10:
+        n_inner_level_epochs=200
+    else:
+        n_inner_level_epochs=100
 
     number_list=random.sample(range(whole_task_num),task_num)
     t_data_list_thisepoch=[]
@@ -283,23 +294,23 @@ for epoch in range(n_epochs):
                 def loss_val_call(params, hparams):
                     return my_mse_loss(model(features_test, params), label_test, sigma_test)
                 
-                inner_opt_class = hg.GradientDescent
-                inner_opt_kwargs = {'step_size': 0.00006}
-                inner_opt=inner_opt_class(loss_train_call, **inner_opt_kwargs)
-                inner_epoch=100
+                #inner_opt_class = hg.GradientDescent
+                #inner_opt_kwargs = {'step_size': 0.00006}
+                #inner_opt=inner_opt_class(loss_train_call, **inner_opt_kwargs)
 
                 if number<task_num:
                     theta_tem = [p.detach().clone().requires_grad_(True) for p in model.params] 
-                    theta_prime = inner_loop(model.params, theta_tem, inner_opt, inner_epoch)[-1]
+                    theta_prime = inner_loop_my(model.params, theta_tem, loss_train_call, n_inner_level_epochs)
+                    #theta_prime = inner_loop(model.params, theta_tem, inner_opt, n_inner_level_epochs)[-1]
                     theta_prime_list.append(theta_prime)
 
                     cg_fp_map = hg.GradientDescent(loss_f=loss_train_call, step_size=1.)  
                     hg.CG(theta_prime, list(model.params), K=5, fp_map=cg_fp_map, outer_loss=loss_val_call) 
                 else:
                     theta_tem = [p.detach().clone().requires_grad_(True) for p in model.params] 
-                    theta_prime = inner_loop(model.params, theta_tem, inner_opt, inner_epoch)[-1]
+                    theta_prime = inner_loop_my(model.params, theta_tem, loss_train_call, n_inner_level_epochs)
+                    #theta_prime = inner_loop(model.params, theta_tem, inner_opt, n_inner_level_epochs)[-1]
                     theta_prime_list.append(theta_prime)
-
                 
             elif number>=task_num+task_test_num and number<2*task_num+task_test_num:
                 task_now=number-(task_num+task_test_num)
@@ -333,8 +344,13 @@ for epoch in range(n_epochs):
                 loss_constraint_meta_test_tensor.append(constraint_voilations(outputs2, center=center_list_train_thisepoch[task_now] ))
                 
         loss_meta_train=sum(loss_meta_train_tensor)/float(task_num)
+
         #loss_meta_train.backward(retain_graph=  False)
-        optimizer.step()
+        
+        nan_list=[bool(torch.isnan(pa.grad).any()) for pa in model.params ]
+        print(nan_list)
+        if not bool(nan_list[0]):
+            optimizer.step()
 
         loss_meta_test=sum(loss_meta_test_tensor)/float(task_test_num)
         loss_constraint_meta_test=sum(loss_constraint_meta_test_tensor)/float(task_test_num)
@@ -360,6 +376,6 @@ for epoch in range(n_epochs):
 
     print("meta lambda:   "+str(meta_lambda))
 
-################ save model ################
-torch.save(model, 'model_meta.pkl') 
+    ################ save model ################
+    torch.save(model, 'model_meta.pkl') 
 
