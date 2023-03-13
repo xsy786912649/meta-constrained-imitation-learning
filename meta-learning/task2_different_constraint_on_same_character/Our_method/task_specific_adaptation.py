@@ -37,8 +37,8 @@ sigma_data_test_list=[]
 whole_task_num=len(filename_list) 
 task_test_num=len(test_file_name_list)
 
-#center_list_test=np.random.normal(0, 1, [task_test_num,2])
-center_list_test=np.array([[-0.57415846,-1.167481 ],[-1.33820054,1.55999908],[-0.8732721 ,-1.38164796],[-0.0 ,-0]])
+center_list_test=np.random.normal(0, 1, [task_test_num,2])
+#center_list_test=np.array([[-0.57415846,-1.167481 ],[-1.33820054,1.55999908],[-0.8732721 ,-1.38164796],[-0.0 ,-0]])
 
 for filename in filename_list:
     t_data=[]
@@ -67,7 +67,7 @@ for filename in test_file_name_list:
     sigma_data_test_list.append(np.array(sigma_data))
 
 batch_size_K = 400
-meta_lambda=0.1
+meta_lambda=1.0
 n_epochs = 50
 
 redius=2.0
@@ -86,6 +86,9 @@ class Model(torch.nn.Module):
                     torch.Tensor(128, 128).uniform_(-1./math.sqrt(128), 1./math.sqrt(128)).requires_grad_(),
                     torch.Tensor(128).zero_().requires_grad_(),
 
+                    torch.Tensor(128, 128).uniform_(-1./math.sqrt(128), 1./math.sqrt(128)).requires_grad_(),
+                    torch.Tensor(128).zero_().requires_grad_(),
+
                     torch.Tensor(2, 128).uniform_(-1./math.sqrt(128), 1./math.sqrt(128)).requires_grad_(),
                     torch.Tensor(2).zero_().requires_grad_(),
                 ]
@@ -98,6 +101,9 @@ class Model(torch.nn.Module):
         y = F.relu(y)
 
         y = F.linear(y, params[4], params[5])
+        y = F.relu(y)
+
+        y = F.linear(y, params[6], params[7])
 
         return y
 

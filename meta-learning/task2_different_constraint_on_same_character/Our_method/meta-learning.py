@@ -73,7 +73,7 @@ for filename in test_file_name_list:
 batch_size_K = 400
 batch_size_outer = 400
 meta_lambda=1.0
-n_epochs = 100
+n_epochs = 80
 n_inner_level_epochs=100
 
 redius=2.0
