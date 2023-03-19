@@ -1,8 +1,8 @@
 Task: different constraints on same character A
 few_shot: No (on a same character, few shot is not meaningful)
 
-Update many time to make sure the constraints are go to 0
-
-Compare: time and objective function
+Compare: objective function and constraint
 
 Show: meta parameter (meta regularization is also meta initialization) can help avoid bad local minimal 
+
+nonconvex, the initial parameter is very inportant

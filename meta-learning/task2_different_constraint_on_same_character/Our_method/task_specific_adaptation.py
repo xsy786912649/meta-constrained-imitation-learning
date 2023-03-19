@@ -67,7 +67,7 @@ for filename in test_file_name_list:
     sigma_data_test_list.append(np.array(sigma_data))
 
 batch_size_K = 400
-meta_lambda=50.0
+meta_lambda=100.0
 n_epochs = 40
 
 redius=2.0
@@ -187,9 +187,6 @@ for num_task in range(len(t_data_test_list)):
     (step_test, data_test_now) = list(enumerate(data_loader_test))[0]
 
     for epoch in range(n_epochs):
-        loss_train_sum = 0.0
-        loss_test_sum = 0.0
-        loss_test_constraint_sum=0.0
 
         (features, labels, sigmas)=data_train_now
         features = features.to(device)
@@ -220,11 +217,7 @@ for num_task in range(len(t_data_test_list)):
         
         print(lambada)
 
-        loss_train_sum += loss_train.item()
-        
-        if (step_train+1) % 1 == 0:
-            print(f'epoch = {epoch+1}, step = {step_train+1}, train loss = {loss_train_sum / 1:.6f}, reg loss = {bias_reg(model.params,meta_parameter).item():.6f}')
-            loss_train_sum=0
+        print(f'epoch = {epoch+1}, step = {step_train+1}, train loss = {loss_train.item() / 1:.6f}, reg loss = {bias_reg(model.params,meta_parameter).item():.6f}')
 
         (features, labels, sigmas)=data_test_now
         features = features.to(device)
@@ -233,12 +226,8 @@ for num_task in range(len(t_data_test_list)):
         outputs = model(features, model.params)
         loss_test = my_mse_loss(outputs, labels,sigmas)
         constraint_test=constraint_voilations(outputs,center=center_list_test[num_task])
-        loss_test_sum += loss_test.item()
-        loss_test_constraint_sum +=constraint_test.item() 
+        print(f'epoch = {epoch+1}, test mse loss = {loss_test.item() :.6f}, test constraint loss = {constraint_test.item()  :.6f}')
 
-        if (step_test+1) % 1 == 0:
-            print(f'epoch = {epoch+1}, step = {step_test+1}, test mse loss = {loss_test_sum / 1:.6f}, test constraint loss = {loss_test_constraint_sum / 1:.6f}')
-            loss_test_sum=0
 
     outputs=[]
     inputss=[]
