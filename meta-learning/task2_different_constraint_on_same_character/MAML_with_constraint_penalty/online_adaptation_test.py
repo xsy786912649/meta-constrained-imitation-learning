@@ -187,7 +187,12 @@ def test_result(round):
         print(f"round = {round}")
         print(f'epoch = {epoch+1}, step = {step_test+1}, train loss = {loss_train.item():.6f}, test mse loss = {loss_test.item():.6f}, test constraint loss = {constraint_test.item()  / 1:.6f}')
 
+    return loss_test.item(),constraint_test.item()
+
 if __name__ == "__main__":
-    round=100
-    for i in range(round):
-        test_result(i+1)
+    round=99
+    with open("result.csv", "w", encoding='utf-8', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        for i in range(round):
+            loss_test,constraint_test=test_result(i+1)
+            writer.writerow([str(loss_test),str(constraint_test)])

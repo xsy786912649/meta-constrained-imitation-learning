@@ -22,6 +22,7 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+import csv
 
 
 
@@ -225,8 +226,12 @@ def test_result(round):
         print(f"round = {round}")
         print(f'epoch = {epoch+1}, step = {step_train+1}, train loss = {loss_train.item() / 1:.6f}, reg loss = {bias_reg(model.params,meta_parameter).item():.6f}')
         print(f'epoch = {epoch+1}, test mse loss = {loss_test.item() :.6f}, test constraint loss = {constraint_test.item()  :.6f}')
+    return loss_test.item(),constraint_test.item()
 
 if __name__ == "__main__":
-    round=100
-    for i in range(round):
-        test_result(i+1)
+    round=99
+    with open("result.csv", "w", encoding='utf-8', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        for i in range(round):
+            loss_test,constraint_test=test_result(i+1)
+            writer.writerow([str(loss_test),str(constraint_test)])
