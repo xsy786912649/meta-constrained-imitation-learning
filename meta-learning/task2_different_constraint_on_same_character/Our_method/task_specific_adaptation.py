@@ -37,8 +37,8 @@ sigma_data_test_list=[]
 whole_task_num=len(filename_list) 
 task_test_num=len(test_file_name_list)
 
-center_list_test=np.random.normal(0, 1, [task_test_num,2])
-#center_list_test=np.array([[-0.57415846,-1.167481 ],[-1.33820054,1.55999908],[-0.8732721 ,-1.38164796],[-0.0 ,-0]])
+#center_list_test=np.random.normal(0, 1, [task_test_num,2])
+center_list_test=np.array([[-0.57415846,-1.167481 ],[-1.33820054,1.55999908],[-0.8732721 ,-1.38164796],[-0.0 ,-0]])
 
 for filename in filename_list:
     t_data=[]

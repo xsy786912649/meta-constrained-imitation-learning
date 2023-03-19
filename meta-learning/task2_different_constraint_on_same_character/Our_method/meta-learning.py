@@ -205,7 +205,6 @@ def run_for_each_round(model, round):
     learning_rate=0.001
     optimizer0 = torch.optim.Adam(model.params,lr=learning_rate,weight_decay=0.0000)
 
-
     if round<20:
         n_epochs=1
     else:
