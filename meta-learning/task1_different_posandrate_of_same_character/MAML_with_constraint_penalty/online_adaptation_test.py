@@ -32,19 +32,19 @@ def setup_seed(seed):
     random.seed(seed)
     torch.backends.cudnn.deterministic = True
 
-seedsss=200
+seedsss=204
 setup_seed(seedsss)
 
 
 filename_list_whole=["../../ref_traj/"+'A'+"_reftraj.mat" ]*101
-center_list_whole=np.random.normal(0, 1, [len(filename_list_whole),2])
+translation_list_whole=np.random.normal(0, 1, [len(filename_list_whole),2])*2
 
-redius=2.0
-less=False
+redius=6.0
+less=True
 weight=500.0
 softplus_para=200.0
 
-batch_size_K = 400
+batch_size_K = 20
 meta_lambda=0.00006
 n_epochs = 40
     
@@ -134,17 +134,16 @@ def test_result(round):
     test_file_name_list=filename_list_whole[round:round+1]
     task_test_num=len(test_file_name_list)
 
-    #center_list_train=center_list_whole[0:round,:]
-    center_list_test=center_list_whole[round:round+1,:]
+    translation_list_test=translation_list_whole[round:round+1,:]
 
-    for filename in test_file_name_list:
+    for ii in range(len(test_file_name_list)):
         t_data=[]
         y_data=[]
         sigma_data=[]
-        file_data=scio.loadmat(filename)['refTraj'][0]
+        file_data=scio.loadmat(test_file_name_list[ii])['refTraj'][0]
         for data in file_data:
             t_data.append([data[0][0][0]-1.0])
-            y_data.append([data[1][0][0],data[1][1][0],data[1][2][0],data[1][3][0]])
+            y_data.append([data[1][0][0]+translation_list_test[ii][0],data[1][1][0]+translation_list_test[ii][1],data[1][2][0],data[1][3][0]])
             sigma_data.append(data[2]+0.001*np.identity(4))
         t_data_test_list.append(np.array(t_data))
         y_data_test_list.append(np.array(y_data))
@@ -171,7 +170,7 @@ def test_result(round):
             (features_constraint, labels_constraint, sigmas_constraint)=data_test_now
             features_constraint = features_constraint.to(device)
             outputs1 = model(features_constraint, model.params)
-            loss_train+=constraint_voilations(outputs1,center=center_list_test[num_task])
+            loss_train+=constraint_voilations(outputs1)
 
             grads = torch.autograd.grad(loss_train, model.params, create_graph=False, retain_graph=False)
             theta_prime = [(model.params[i] - meta_lambda*grads[i]) for i in range(len(model.params))]
@@ -183,7 +182,7 @@ def test_result(round):
             sigmas=sigmas.to(device)
             outputs = model(features, model.params)
             loss_test = my_mse_loss(outputs, labels,sigmas)
-            constraint_test=constraint_voilations(outputs,center=center_list_test[num_task])
+            constraint_test=constraint_voilations(outputs)
 
         print(f"round = {round}")
         print(f'epoch = {epoch+1}, step = {step_test+1}, train loss = {loss_train.item():.6f}, test mse loss = {loss_test.item():.6f}, test constraint loss = {constraint_test.item()  / 1:.6f}')

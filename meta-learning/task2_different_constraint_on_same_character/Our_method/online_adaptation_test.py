@@ -33,10 +33,11 @@ def setup_seed(seed):
     random.seed(seed)
     torch.backends.cudnn.deterministic = True
 
-setup_seed(200)
+seedsss=200
+setup_seed(seedsss)
 
 
-filename_list_whole=["../../ref_traj/"+'A'+"_reftraj.mat" ]*100
+filename_list_whole=["../../ref_traj/"+'A'+"_reftraj.mat" ]*101
 center_list_whole=np.random.normal(0, 1, [len(filename_list_whole),2])
 
 batch_size_K = 400
@@ -230,7 +231,7 @@ def test_result(round):
 
 if __name__ == "__main__":
     round=99
-    with open("result.csv", "w", encoding='utf-8', newline='') as csvfile:
+    with open("result"+str(seedsss)+".csv", "w", encoding='utf-8', newline='') as csvfile:
         writer = csv.writer(csvfile)
         for i in range(round):
             loss_test,constraint_test=test_result(i+1)
