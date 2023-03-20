@@ -33,7 +33,7 @@ def setup_seed(seed):
     random.seed(seed)
     torch.backends.cudnn.deterministic = True
 
-seedsss=202
+seedsss=204
 setup_seed(seedsss)
 
 
@@ -41,8 +41,8 @@ filename_list_whole=["../../ref_traj/"+'A'+"_reftraj.mat" ]*101
 translation_list_whole=np.random.normal(0, 1, [len(filename_list_whole),2])*2
 
 batch_size_K = 20
-meta_lambda=100.0
-n_epochs = 50
+meta_lambda=0.0
+n_epochs = 100
 
 redius=6.0
 less=True
@@ -159,9 +159,9 @@ def test_result(round):
 
     for num_task in range(len(t_data_test_list)):
 
-        model = torch.load('./pkl/model_meta_'+str(round)+'.pkl') 
+        model = Model()
         model = model.to(device)
-        model_meta=torch.load('./pkl/model_meta_'+str(round)+'.pkl') 
+        model_meta=Model()
         meta_parameter=model_meta.params
         for i in range(len(model_meta.params)):
             meta_parameter[i].requires_grad = False 
