@@ -71,7 +71,7 @@ maml_test_cv=np.array(maml_test_cv_list)
 ours_test_error_list=[]
 ours_test_cv_list=[]
 
-for aa in [200,201,202,203,204]:
+for aa in [200,201,202,203,204,205,206]:
     ours_test_error_temp=[]
     ours_test_cv_temp=[]
     with open("../Our_method/result"+str(aa)+".csv", encoding='utf-8')as f:
@@ -92,7 +92,7 @@ ours_test_error=np.array(ours_test_error_list)-2.0
 ours_test_cv=np.array(ours_test_cv_list)/2.0
 
 fs_test_error_mean =  np.mean(fs_test_error, axis=0)
-fs_test_error_sd=np.std(fs_test_error, axis=0)/2
+fs_test_error_sd=np.std(fs_test_error, axis=0)/3
 maml_test_error_mean =  np.mean(maml_test_error, axis=0)
 maml_test_error_sd=np.std(maml_test_error, axis=0)/2
 ours_test_error_mean =  np.mean(ours_test_error, axis=0)

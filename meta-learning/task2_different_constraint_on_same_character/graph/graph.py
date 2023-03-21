@@ -148,7 +148,7 @@ ax.fill_between(axis,ours_test_cv_mean-ours_test_cv_sd,ours_test_cv_mean+ours_te
 plt.title('Full-shot imitation learning',size=28)
 plt.xlabel('Round (number of revealed tasks)',size=28)
 plt.ylabel("Constraint voilation on test data",size=28)
-#plt.ylim(0.64,0.8)
+plt.ylim(-0.1,8.0)
 #plt.legend(loc=4)
 plt.legend(loc=0, numpoints=1)
 plt.subplots_adjust(left=0.105, right=0.970, top=0.935, bottom=0.120)
