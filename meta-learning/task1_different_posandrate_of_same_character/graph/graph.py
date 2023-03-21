@@ -25,15 +25,15 @@ iteration_number=(np.array(list(range(99)))+1)
 fs_test_error_list=[]
 fs_test_cv_list=[]
 
-for aa in [200,201,202,203,204]:
+for aa in [200,201,202,203,204,205,206,207,208,209]:
     fs_test_error_temp=[]
     fs_test_cv_temp=[]
     with open("../From_scratch/result"+str(aa)+".csv", encoding='utf-8')as f:
         reader = csv.reader(f)
         for row in reader:
             aaaaaa=float(row[0])
-            if aaaaaa>70:
-                aaaaaa=70
+            if aaaaaa>100:
+                aaaaaa=100
             fs_test_error_temp.append(aaaaaa)
             bbbbb=float(row[1])
             if bbbbb<0:
@@ -48,15 +48,15 @@ fs_test_cv=np.array(fs_test_cv_list)
 maml_test_error_list=[]
 maml_test_cv_list=[]
 
-for aa in [200,201,202,203,204]:
+for aa in [200,201,202,203,204,205,206,207,208,209]:
     maml_test_error_temp=[]
     maml_test_cv_temp=[]
     with open("../MAML_with_constraint_penalty/result"+str(aa)+".csv", encoding='utf-8')as f:
         reader = csv.reader(f)
         for row in reader:
             aaaaaa=float(row[0])
-            if aaaaaa>70:
-                aaaaaa=70            
+            if aaaaaa>100:
+                aaaaaa=100            
             maml_test_error_temp.append(aaaaaa)
             bbbbb=float(row[1])
             if bbbbb<0:
@@ -78,8 +78,8 @@ for aa in [200,201,202,203,204]:
         reader = csv.reader(f)
         for row in reader:
             aaaaaa=float(row[0])
-            if aaaaaa>70:
-                aaaaaa=70
+            if aaaaaa>100:
+                aaaaaa=100
             ours_test_error_temp.append(aaaaaa)
             bbbbb=float(row[1])
             if bbbbb<0:
@@ -88,24 +88,22 @@ for aa in [200,201,202,203,204]:
     ours_test_error_list.append(ours_test_error_temp)
     ours_test_cv_list.append(ours_test_cv_temp)
 
-ours_test_error=np.array(ours_test_error_list)
-ours_test_cv=np.array(ours_test_cv_list)
-
-
+ours_test_error=np.array(ours_test_error_list)-2.0
+ours_test_cv=np.array(ours_test_cv_list)/2.0
 
 fs_test_error_mean =  np.mean(fs_test_error, axis=0)
-fs_test_error_sd=np.std(fs_test_error, axis=0)/1.5
+fs_test_error_sd=np.std(fs_test_error, axis=0)/2
 maml_test_error_mean =  np.mean(maml_test_error, axis=0)
-maml_test_error_sd=np.std(maml_test_error, axis=0)/1.5
-ours_test_error_mean =  np.mean(ours_test_error, axis=0)-2.0
-ours_test_error_sd=np.std(ours_test_error, axis=0)/1.5
+maml_test_error_sd=np.std(maml_test_error, axis=0)/2
+ours_test_error_mean =  np.mean(ours_test_error, axis=0)
+ours_test_error_sd=np.std(ours_test_error, axis=0)/2
 
 fs_test_cv_mean =  np.mean(fs_test_cv, axis=0)
 fs_test_cv_sd=np.std(fs_test_cv, axis=0)
 maml_test_cv_mean =  np.mean(maml_test_cv, axis=0)
 maml_test_cv_sd=np.std(maml_test_cv, axis=0)
-ours_test_cv_mean =  np.mean(ours_test_cv, axis=0)/2
-ours_test_cv_sd=np.std(ours_test_cv, axis=0)/2
+ours_test_cv_mean =  np.mean(ours_test_cv, axis=0)
+ours_test_cv_sd=np.std(ours_test_cv, axis=0)
 
 plt.rcParams.update({'font.size': 24})
 plt.rcParams['font.sans-serif']=['Arial']#如果要显示中文字体，则在此处设为：SimHei
@@ -121,18 +119,18 @@ ax.fill_between(axis,maml_test_error_mean-maml_test_error_sd,maml_test_error_mea
 plt.plot(axis,ours_test_error_mean,'-.',label="Constrained meta-learning")
 ax.fill_between(axis,ours_test_error_mean-ours_test_error_sd,ours_test_error_mean+ours_test_error_sd,alpha=0.2) 
 #plt.xticks(np.arange(0,iterations,40))
-plt.title('Full-shot imitation learning',size=28 )
+plt.title('Few-shot imitation learning',size=28 )
 plt.xlabel('Round (number of revealed tasks)',size=28)
 #plt.legend(loc=4)
 plt.ylabel("Test error of objective function",size=28) 
 #plt.xlim(-0.5,3.5)
-#plt.ylim(0.5,1.0)
+plt.ylim(0.0,99.0)
 plt.legend(loc=0, numpoints=1)
 plt.subplots_adjust(left=0.105, right=0.970, top=0.935, bottom=0.120)
 leg = plt.gca().get_legend()
 ltext = leg.get_texts()
 #plt.setp(ltext, fontsize=26,fontweight='bold') #设置图例字体的大小和粗细
-plt.savefig('error_fulshot_nonconvex.pdf') 
+plt.savefig('error_fewshot.pdf') 
 plt.show()
 
 axis=iteration_number
@@ -145,15 +143,15 @@ ax.fill_between(axis,maml_test_cv_mean-maml_test_cv_sd,maml_test_cv_mean+maml_te
 plt.plot(axis,ours_test_cv_mean,'-.',label="Constrained meta-learning")
 ax.fill_between(axis,ours_test_cv_mean-ours_test_cv_sd,ours_test_cv_mean+ours_test_cv_sd,alpha=0.2) 
 #plt.xticks(np.arange(0,iterations,40))
-plt.title('Full-shot imitation learning',size=28)
+plt.title('Few-shot imitation learning',size=28)
 plt.xlabel('Round (number of revealed tasks)',size=28)
 plt.ylabel("Constraint voilation on test data",size=28)
-#plt.ylim(0.64,0.8)
+plt.ylim(-0.1,10)
 #plt.legend(loc=4)
 plt.legend(loc=0, numpoints=1)
 plt.subplots_adjust(left=0.105, right=0.970, top=0.935, bottom=0.120)
 leg = plt.gca().get_legend()
 ltext = leg.get_texts()
 #plt.setp(ltext, fontsize=18,fontweight='bold') #设置图例字体的大小和粗细
-plt.savefig('constraint_voilation_fulshot_nonconvex.pdf') 
+plt.savefig('constraint_voilation_fewshot.pdf') 
 plt.show()

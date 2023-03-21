@@ -34,11 +34,11 @@ def setup_seed(seed):
     random.seed(seed)
     torch.backends.cudnn.deterministic = True
 
-setup_seed(202)
+setup_seed(203)
 
 filename_list_whole=["../../ref_traj/"+'A'+"_reftraj.mat" ]*101
 translation_list_whole=np.random.normal(0, 1, [len(filename_list_whole),2])*2
-
+print(translation_list_whole)
 
 batch_size_K = 20
 batch_size_outer = 400
