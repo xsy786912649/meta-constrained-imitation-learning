@@ -92,7 +92,7 @@ ours_test_error=np.array(ours_test_error_list)-2.0
 ours_test_cv=np.array(ours_test_cv_list)/2.0
 
 fs_test_error_mean =  np.mean(fs_test_error, axis=0)
-fs_test_error_sd=np.std(fs_test_error, axis=0)/3
+fs_test_error_sd=np.std(fs_test_error, axis=0)/2
 maml_test_error_mean =  np.mean(maml_test_error, axis=0)
 maml_test_error_sd=np.std(maml_test_error, axis=0)/2
 ours_test_error_mean =  np.mean(ours_test_error, axis=0)

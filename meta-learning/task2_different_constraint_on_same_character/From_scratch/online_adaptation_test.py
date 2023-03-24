@@ -195,5 +195,8 @@ if __name__ == "__main__":
     with open("result"+str(seedsss)+".csv", "w", encoding='utf-8', newline='') as csvfile:
         writer = csv.writer(csvfile)
         for i in range(round):
+            start=time.time()
             loss_test,constraint_test=test_result(i+1)
+            end=time.time()
+            print(+start-end)
             writer.writerow([str(loss_test),str(constraint_test)])

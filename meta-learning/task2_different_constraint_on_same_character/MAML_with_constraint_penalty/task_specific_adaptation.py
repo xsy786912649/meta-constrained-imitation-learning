@@ -68,7 +68,7 @@ for filename in test_file_name_list:
 
 batch_size_K = 400
 meta_lambda=0.00006
-n_epochs = 40
+n_epochs = 20
 
 redius=2.0
 less=False
@@ -164,6 +164,7 @@ for num_task in range(len(t_data_test_list)):
     (step_train, data_train_now) = list(enumerate(data_loader_train))[0]
     (step_test, data_test_now) = list(enumerate(data_loader_test))[0]
 
+    start=time.time()
     for epoch in range(n_epochs):
 
         (features, labels, sigmas)=data_train_now
@@ -191,7 +192,8 @@ for num_task in range(len(t_data_test_list)):
         constraint_test=constraint_voilations(outputs,center=center_list_test[num_task])
 
         print(f'epoch = {epoch+1}, step = {step_test+1}, train loss = {loss_train.item():.6f}, test mse loss = {loss_test.item():.6f}, test constraint loss = {constraint_test.item()  / 1:.6f}')
-
+    end=time.time()
+    print(end-start)
     outputs=[]
     inputss=[]
     labelss=[]
