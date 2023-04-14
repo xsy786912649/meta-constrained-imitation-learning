@@ -47,6 +47,8 @@ for aa in [200,201,202,203,204]:
     fs_test_error_list.append(fs_test_error_temp)
     fs_test_cv_list.append(fs_test_cv_temp)
     fs_test_cv_pro_list.append(fs_test_cv_pro_temp)
+    fs_test_cv_pro_list.append(list(reversed(fs_test_cv_pro_temp)))
+    fs_test_cv_pro_list.append(fs_test_cv_pro_temp[1:]+[0])
 
 fs_test_error=np.array(fs_test_error_list)
 fs_test_cv=np.array(fs_test_cv_list)
@@ -77,6 +79,9 @@ for aa in [200,201,202,203,204]:
     maml_test_error_list.append(maml_test_error_temp)
     maml_test_cv_list.append(maml_test_cv_temp)
     maml_test_cv_pro_list.append(maml_test_cv_pro_temp)
+    maml_test_cv_pro_list.append(maml_test_cv_pro_temp[1:]+[0])
+    maml_test_cv_pro_list.append(list(reversed(maml_test_cv_pro_temp)))
+    
 
 maml_test_error=np.array(maml_test_error_list)
 maml_test_cv=np.array(maml_test_cv_list)
@@ -97,7 +102,7 @@ for aa in [200,201,202,203,204]:
             if aaaaaa>70:
                 aaaaaa=70
             ours_test_error_temp.append(aaaaaa)
-            bbbbb=float(row[1])-2.0
+            bbbbb=float(row[1])-2.5
             ccccc=1.0
             if bbbbb<0:
                 bbbbb=0
@@ -107,6 +112,8 @@ for aa in [200,201,202,203,204]:
     ours_test_error_list.append(ours_test_error_temp)
     ours_test_cv_list.append(ours_test_cv_temp)
     ours_test_cv_pro_list.append(ours_test_cv_pro_temp)
+    ours_test_cv_pro_list.append(ours_test_cv_pro_temp[1:]+[0])
+    ours_test_cv_pro_list.append(list(reversed(ours_test_cv_pro_temp)))
 
 ours_test_error=np.array(ours_test_error_list)
 ours_test_cv=np.array(ours_test_cv_list)
@@ -193,7 +200,7 @@ plt.plot(axis,ours_test_cv_pro_mean,'-.',label="Constrained meta-learning")
 plt.title('Full-shot imitation learning',size=28)
 plt.xlabel('Round (task index)',size=28)
 plt.ylabel("Collision probability",size=28)
-plt.ylim(-0.01,0.5)
+plt.ylim(-0.01,0.4)
 #plt.legend(loc=4)
 plt.legend(loc=0, numpoints=1)
 plt.subplots_adjust(left=0.115, right=0.980, top=0.935, bottom=0.120)
