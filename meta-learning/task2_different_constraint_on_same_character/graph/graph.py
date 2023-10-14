@@ -219,7 +219,6 @@ std_err=[0.7,0.23,0.25]
 error_params=dict(elinewidth=4,capsize=5)
 
 bar = plt.bar(x_data, y_data, 0.2,yerr=std_err,error_kw=error_params)
-ax.set_title('Full-shot imitation learning',size=28)
 
 ax.set_ylabel("Adaptation time (s)",size=28)
 plt.subplots_adjust(left=0.090, right=0.930, top=0.935, bottom=0.120)
